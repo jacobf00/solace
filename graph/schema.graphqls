@@ -1,0 +1,55 @@
+scalar Time
+
+type User {
+  id: ID!
+  username: String!
+  email: String!
+  problems: [Problem!]!
+}
+
+type Problem {
+  id: ID!
+  title: String!
+  description: String!
+  context: String
+  category: String
+  createdAt: Time!
+  readingPlan: ReadingPlan
+  advice: String
+}
+
+type ReadingPlan {
+  id: ID!
+  problem: Problem!
+  createdAt: Time!
+  items: [ReadingPlanItem!]!
+}
+
+type ReadingPlanItem {
+  id: ID!
+  verse: Verse!
+  itemOrder: Int!  # Changed from "order" to "itemOrder"
+  isRead: Boolean!
+}
+
+type Verse {
+  id: ID!
+  book: String!
+  chapter: Int!
+  verse: Int!
+  text: String!
+}
+
+# Query operations - these allow clients to fetch data from the server
+type Query {
+  user(id: ID!): User  # Retrieves a specific user by their ID
+  problem(id: ID!): Problem  # Retrieves a specific problem by its ID
+  readingPlan(id: ID!): ReadingPlan  # Retrieves a specific reading plan by its ID
+}
+
+# Mutation operations - these allow clients to modify data on the server
+type Mutation {
+  createUser(username: String!, email: String!, password: String!): User  # Creates a new user account
+  createProblem(title: String!, description: String!, context: String, category: String): Problem  # Creates a new problem entry
+  markVerseAsRead(readingPlanId: ID!, verseId: ID!, isRead: Boolean!): ReadingPlanItem  # Updates the read status of a verse in a reading plan
+}
