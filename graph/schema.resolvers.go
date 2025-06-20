@@ -6,39 +6,274 @@ package graph
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
+	"strconv"
+	"time"
 
 	"github.com/jacobf00/solace/graph/model"
 )
 
 // CreateUser is the resolver for the createUser field.
 func (r *mutationResolver) CreateUser(ctx context.Context, username string, email string, password string) (*model.User, error) {
-	panic(fmt.Errorf("not implemented: CreateUser - createUser"))
+	var userID int
+	query := `INSERT INTO users (username, email, password_hash) VALUES ($1, $2, $3) RETURNING id`
+
+	err := r.DB.QueryRow(query, username, email, password).Scan(&userID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create user: %w", err)
+	}
+
+	return &model.User{
+		ID:       strconv.Itoa(userID),
+		Username: username,
+		Email:    email,
+		Problems: []*model.Problem{},
+	}, nil
 }
 
 // CreateProblem is the resolver for the createProblem field.
 func (r *mutationResolver) CreateProblem(ctx context.Context, title string, description string, context *string, category *string) (*model.Problem, error) {
-	panic(fmt.Errorf("not implemented: CreateProblem - createProblem"))
+	var problemID int
+	var createdAt time.Time
+
+	// For now, using user_id = 1 as default. You might want to get this from auth context
+	query := `INSERT INTO problems (user_id, title, description, context, category)
+			  VALUES ($1, $2, $3, $4, $5)
+			  RETURNING id, created_at`
+
+	err := r.DB.QueryRow(query, 1, title, description, context, category).Scan(&problemID, &createdAt)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create problem: %w", err)
+	}
+
+	return &model.Problem{
+		ID:          strconv.Itoa(problemID),
+		Title:       title,
+		Description: description,
+		Context:     context,
+		Category:    category,
+		CreatedAt:   createdAt,
+	}, nil
 }
 
 // MarkVerseAsRead is the resolver for the markVerseAsRead field.
 func (r *mutationResolver) MarkVerseAsRead(ctx context.Context, readingPlanID string, verseID string, isRead bool) (*model.ReadingPlanItem, error) {
-	panic(fmt.Errorf("not implemented: MarkVerseAsRead - markVerseAsRead"))
+	planID, err := strconv.Atoi(readingPlanID)
+	if err != nil {
+		return nil, fmt.Errorf("invalid reading plan ID: %w", err)
+	}
+
+	vID, err := strconv.Atoi(verseID)
+	if err != nil {
+		return nil, fmt.Errorf("invalid verse ID: %w", err)
+	}
+
+	query := `UPDATE reading_plan_items SET is_read = $1
+			  WHERE reading_plan_id = $2 AND verse_id = $3
+			  RETURNING id, item_order`
+
+	var itemID int
+	var itemOrder int32
+	err = r.DB.QueryRow(query, isRead, planID, vID).Scan(&itemID, &itemOrder)
+	if err != nil {
+		return nil, fmt.Errorf("failed to update verse read status: %w", err)
+	}
+
+	// Get verse details
+	verse, err := r.Resolver.getVerseByID(vID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get verse details: %w", err)
+	}
+
+	return &model.ReadingPlanItem{
+		ID:        strconv.Itoa(itemID),
+		Verse:     verse,
+		ItemOrder: itemOrder,
+		IsRead:    isRead,
+	}, nil
 }
 
 // User is the resolver for the user field.
 func (r *queryResolver) User(ctx context.Context, id string) (*model.User, error) {
-	panic(fmt.Errorf("not implemented: User - user"))
+	userID, err := strconv.Atoi(id)
+	if err != nil {
+		return nil, fmt.Errorf("invalid user ID: %w", err)
+	}
+
+	var user model.User
+	query := `SELECT id, username, email FROM users WHERE id = $1`
+
+	err = r.DB.QueryRow(query, userID).Scan(&user.ID, &user.Username, &user.Email)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, fmt.Errorf("user not found")
+		}
+		return nil, fmt.Errorf("failed to get user: %w", err)
+	}
+
+	// Get user's problems
+	problems, err := r.Resolver.getProblemsByUserID(userID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get user problems: %w", err)
+	}
+
+	user.Problems = problems
+	return &user, nil
 }
 
 // Problem is the resolver for the problem field.
 func (r *queryResolver) Problem(ctx context.Context, id string) (*model.Problem, error) {
-	panic(fmt.Errorf("not implemented: Problem - problem"))
+	problemID, err := strconv.Atoi(id)
+	if err != nil {
+		return nil, fmt.Errorf("invalid problem ID: %w", err)
+	}
+
+	var problem model.Problem
+	query := `SELECT id, title, description, context, category, created_at, advice
+			  FROM problems WHERE id = $1`
+
+	err = r.DB.QueryRow(query, problemID).Scan(
+		&problem.ID, &problem.Title, &problem.Description,
+		&problem.Context, &problem.Category, &problem.CreatedAt, &problem.Advice)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, fmt.Errorf("problem not found")
+		}
+		return nil, fmt.Errorf("failed to get problem: %w", err)
+	}
+
+	// Get reading plan if exists
+	readingPlan, err := r.Resolver.getReadingPlanByProblemID(problemID)
+	if err == nil {
+		problem.ReadingPlan = readingPlan
+	}
+
+	return &problem, nil
 }
 
 // ReadingPlan is the resolver for the readingPlan field.
 func (r *queryResolver) ReadingPlan(ctx context.Context, id string) (*model.ReadingPlan, error) {
-	panic(fmt.Errorf("not implemented: ReadingPlan - readingPlan"))
+	planID, err := strconv.Atoi(id)
+	if err != nil {
+		return nil, fmt.Errorf("invalid reading plan ID: %w", err)
+	}
+
+	var plan model.ReadingPlan
+	query := `SELECT id, problem_id, created_at FROM reading_plans WHERE id = $1`
+
+	var problemID int
+	err = r.DB.QueryRow(query, planID).Scan(&plan.ID, &problemID, &plan.CreatedAt)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, fmt.Errorf("reading plan not found")
+		}
+		return nil, fmt.Errorf("failed to get reading plan: %w", err)
+	}
+
+	// Get associated problem
+	problem, err := r.Problem(ctx, strconv.Itoa(problemID))
+	if err != nil {
+		return nil, fmt.Errorf("failed to get associated problem: %w", err)
+	}
+	plan.Problem = problem
+
+	// Get reading plan items
+	items, err := r.Resolver.getReadingPlanItems(planID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get reading plan items: %w", err)
+	}
+	plan.Items = items
+
+	return &plan, nil
+}
+
+// Helper functions
+func (r *Resolver) getProblemsByUserID(userID int) ([]*model.Problem, error) {
+	query := `SELECT id, title, description, context, category, created_at, advice
+			  FROM problems WHERE user_id = $1`
+
+	rows, err := r.DB.Query(query, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var problems []*model.Problem
+	for rows.Next() {
+		var p model.Problem
+		err := rows.Scan(&p.ID, &p.Title, &p.Description, &p.Context, &p.Category, &p.CreatedAt, &p.Advice)
+		if err != nil {
+			return nil, err
+		}
+		problems = append(problems, &p)
+	}
+
+	return problems, nil
+}
+
+func (r *Resolver) getReadingPlanByProblemID(problemID int) (*model.ReadingPlan, error) {
+	var plan model.ReadingPlan
+	query := `SELECT id, created_at FROM reading_plans WHERE problem_id = $1`
+
+	err := r.DB.QueryRow(query, problemID).Scan(&plan.ID, &plan.CreatedAt)
+	if err != nil {
+		return nil, err
+	}
+
+	// Get reading plan items
+	items, err := r.getReadingPlanItems(problemID)
+	if err != nil {
+		return nil, err
+	}
+	plan.Items = items
+
+	return &plan, nil
+}
+
+func (r *Resolver) getReadingPlanItems(planID int) ([]*model.ReadingPlanItem, error) {
+	query := `SELECT rpi.id, rpi.verse_id, rpi.item_order, rpi.is_read
+			  FROM reading_plan_items rpi
+			  WHERE rpi.reading_plan_id = $1
+			  ORDER BY rpi.item_order`
+
+	rows, err := r.DB.Query(query, planID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var items []*model.ReadingPlanItem
+	for rows.Next() {
+		var item model.ReadingPlanItem
+		var verseID int
+		err := rows.Scan(&item.ID, &verseID, &item.ItemOrder, &item.IsRead)
+		if err != nil {
+			return nil, err
+		}
+
+		verse, err := r.getVerseByID(verseID)
+		if err != nil {
+			return nil, err
+		}
+		item.Verse = verse
+
+		items = append(items, &item)
+	}
+
+	return items, nil
+}
+
+func (r *Resolver) getVerseByID(verseID int) (*model.Verse, error) {
+	var verse model.Verse
+	query := `SELECT id, book, chapter, verse, text FROM verses WHERE id = $1`
+
+	err := r.DB.QueryRow(query, verseID).Scan(&verse.ID, &verse.Book, &verse.Chapter, &verse.Verse, &verse.Text)
+	if err != nil {
+		return nil, err
+	}
+
+	return &verse, nil
 }
 
 // Mutation returns MutationResolver implementation.
