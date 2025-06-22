@@ -67,3 +67,7 @@ Embedding and Similarity Search:
 ### Model Choices:
 Sentence Transformer: all-MiniLM-L6-v2 (lightweight and efficient).
 LLM: A smaller open-source model (e.g., distilled GPT-2) or a cloud service if needed.
+
+### Getting started with development
+connect to database locally
+`psql -d postgres -U $USER`
