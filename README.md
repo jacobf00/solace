@@ -69,5 +69,23 @@ Sentence Transformer: all-MiniLM-L6-v2 (lightweight and efficient).
 LLM: A smaller open-source model (e.g., distilled GPT-2) or a cloud service if needed.
 
 ### Getting started with development
-connect to database locally
-`psql -d postgres -U $USER`
+
+1. Install dependencies:
+   ```bash
+   make deps
+   ```
+
+2. Set up the database:
+   ```bash
+   make setup-db
+   ```
+
+3. Start the development servers:
+   ```bash
+   make dev
+   ```
+
+4. Connect to database locally (if needed):
+   ```bash
+   psql -d postgres -U $USER
+   ```
