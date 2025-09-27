@@ -15,7 +15,7 @@ func InitDB() error {
 	// Get database connection parameters from environment variables or use defaults
 	host := getEnv("DB_HOST", "localhost")
 	port := getEnv("DB_PORT", "5432")
-	user := getEnv("DB_USER", "$USER")
+	user := getEnv("DB_USER", os.Getenv("USER"))
 	password := getEnv("DB_PASSWORD", "")
 	dbname := getEnv("DB_NAME", "postgres")
 	sslmode := getEnv("DB_SSLMODE", "disable")
