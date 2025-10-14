@@ -4,7 +4,10 @@ go 1.24.3
 
 require (
 	github.com/99designs/gqlgen v0.17.74
+	github.com/DATA-DOG/go-sqlmock v1.5.2
 	github.com/lib/pq v1.10.9
+	github.com/mattn/go-sqlite3 v1.14.22
+	github.com/stretchr/testify v1.10.0
 	github.com/vektah/gqlparser/v2 v2.5.27
 )
 
@@ -111,7 +114,6 @@ require (
 	github.com/ktrysmt/go-bitbucket v0.6.4 // indirect
 	github.com/mattn/go-colorable v0.1.14 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
-	github.com/mattn/go-sqlite3 v1.14.22 // indirect
 	github.com/microsoft/go-mssqldb v1.0.0 // indirect
 	github.com/minio/asm2plan9s v0.0.0-20200509001527-cdd76441f9d8 // indirect
 	github.com/minio/c2goasm v0.0.0-20190812172519-36a3d3bbc4f3 // indirect
@@ -135,7 +137,6 @@ require (
 	github.com/snowflakedb/gosnowflake v1.6.19 // indirect
 	github.com/sosodev/duration v1.3.1 // indirect
 	github.com/stretchr/objx v0.5.2 // indirect
-	github.com/stretchr/testify v1.10.0 // indirect
 	github.com/xanzy/go-gitlab v0.15.0 // indirect
 	github.com/xdg-go/pbkdf2 v1.0.0 // indirect
 	github.com/xdg-go/scram v1.1.1 // indirect
