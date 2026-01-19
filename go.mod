@@ -3,14 +3,12 @@ module github.com/jacobf00/solace
 go 1.24.3
 
 require (
-	github.com/99designs/gqlgen v0.17.74
-	github.com/DATA-DOG/go-sqlmock v1.5.2
+	github.com/99designs/gqlgen v0.17.86
+	github.com/golang-jwt/jwt/v4 v4.5.2
 	github.com/google/uuid v1.6.0
 	github.com/jackc/pgx/v5 v5.5.4
 	github.com/mattn/go-sqlite3 v1.14.22
-	github.com/pashagolub/pgxmock v1.8.0
-	github.com/stretchr/testify v1.10.0
-	github.com/vektah/gqlparser/v2 v2.5.27
+	github.com/vektah/gqlparser/v2 v2.5.31
 )
 
 require (
@@ -70,11 +68,10 @@ require (
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/go-sql-driver/mysql v1.5.0 // indirect
 	github.com/go-stack/stack v1.8.0 // indirect
-	github.com/go-viper/mapstructure/v2 v2.2.1 // indirect
+	github.com/go-viper/mapstructure/v2 v2.4.0 // indirect
 	github.com/goccy/go-json v0.9.11 // indirect
 	github.com/gocql/gocql v0.0.0-20210515062232-b7ef815b4556 // indirect
 	github.com/godbus/dbus v0.0.0-20190726142602-4481cbc300e2 // indirect
-	github.com/golang-jwt/jwt/v4 v4.5.2 // indirect
 	github.com/golang-migrate/migrate/v4 v4.19.0 // indirect
 	github.com/golang-sql/civil v0.0.0-20190719163853-cb61b32ac6fe // indirect
 	github.com/golang-sql/sqlexp v0.1.0 // indirect
@@ -102,7 +99,6 @@ require (
 	github.com/jackc/pgservicefile v0.0.0-20221227161230-091c0ba34f0a // indirect
 	github.com/jackc/pgtype v1.14.0 // indirect
 	github.com/jackc/pgx/v4 v4.18.2 // indirect
-	github.com/jackc/puddle v1.3.0 // indirect
 	github.com/jackc/puddle/v2 v2.2.1 // indirect
 	github.com/jmespath/go-jmespath v0.4.0 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect
@@ -139,12 +135,7 @@ require (
 	github.com/snowflakedb/gosnowflake v1.6.19 // indirect
 	github.com/sosodev/duration v1.3.1 // indirect
 	github.com/stretchr/objx v0.5.2 // indirect
-	github.com/supabase-community/functions-go v0.0.0-20220927045802-22373e6cb51d // indirect
-	github.com/supabase-community/gotrue-go v1.2.0 // indirect
-	github.com/supabase-community/postgrest-go v0.0.11 // indirect
-	github.com/supabase-community/storage-go v0.7.0 // indirect
-	github.com/supabase-community/supabase-go v0.0.4 // indirect
-	github.com/tomnomnom/linkheader v0.0.0-20180905144013-02ca5825eb80 // indirect
+	github.com/stretchr/testify v1.11.1 // indirect
 	github.com/xanzy/go-gitlab v0.15.0 // indirect
 	github.com/xdg-go/pbkdf2 v1.0.0 // indirect
 	github.com/xdg-go/scram v1.1.1 // indirect
@@ -160,23 +151,25 @@ require (
 	go.opentelemetry.io/otel v1.37.0 // indirect
 	go.opentelemetry.io/otel/metric v1.37.0 // indirect
 	go.opentelemetry.io/otel/trace v1.37.0 // indirect
-	golang.org/x/crypto v0.39.0 // indirect
-	golang.org/x/mod v0.25.0 // indirect
-	golang.org/x/net v0.41.0 // indirect
+	golang.org/x/crypto v0.46.0 // indirect
+	golang.org/x/mod v0.31.0 // indirect
+	golang.org/x/net v0.48.0 // indirect
 	golang.org/x/oauth2 v0.27.0 // indirect
-	golang.org/x/sync v0.15.0 // indirect
-	golang.org/x/sys v0.33.0 // indirect
-	golang.org/x/term v0.32.0 // indirect
-	golang.org/x/text v0.26.0 // indirect
+	golang.org/x/sync v0.19.0 // indirect
+	golang.org/x/sys v0.39.0 // indirect
+	golang.org/x/telemetry v0.0.0-20251203150158-8fff8a5912fc // indirect
+	golang.org/x/term v0.38.0 // indirect
+	golang.org/x/text v0.33.0 // indirect
 	golang.org/x/time v0.5.0 // indirect
-	golang.org/x/tools v0.33.0 // indirect
+	golang.org/x/tools v0.40.0 // indirect
+	golang.org/x/tools/godoc v0.1.0-deprecated // indirect
 	golang.org/x/xerrors v0.0.0-20231012003039-104605ab7028 // indirect
 	google.golang.org/api v0.169.0 // indirect
 	google.golang.org/genproto v0.0.0-20240213162025-012b6fc9bca9 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20240814211410-ddb44dafa142 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20240903143218-8af14fe29dc1 // indirect
 	google.golang.org/grpc v1.67.0 // indirect
-	google.golang.org/protobuf v1.36.6 // indirect
+	google.golang.org/protobuf v1.36.11 // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	lukechampine.com/uint128 v1.2.0 // indirect

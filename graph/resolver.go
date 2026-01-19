@@ -2,20 +2,23 @@ package graph
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jacobf00/solace/database"
 	"github.com/jacobf00/solace/graph/model"
+	"github.com/jacobf00/solace/internal/ai"
 )
 
 type Resolver struct {
-	DB *database.DB
+	DB       *database.DB
+	AIClient *ai.Client
 }
 
-func NewResolver(db *database.DB) *Resolver {
-	return &Resolver{DB: db}
+func NewResolver(db *database.DB, aiClient *ai.Client) *Resolver {
+	return &Resolver{DB: db, AIClient: aiClient}
 }
 
 func (r *Resolver) Mutation() MutationResolver { return &mutationResolver{r} }
@@ -41,7 +44,7 @@ func (r *Resolver) getProblemsByUserID(ctx context.Context, userID uuid.UUID) ([
 		if err != nil {
 			return nil, err
 		}
-		p.ID = pID.String()
+		p.ID = pID
 		p.Context = dbContext
 		p.Category = dbCategory
 		p.Advice = advice
@@ -100,13 +103,47 @@ func (r *Resolver) getReadingPlanItems(ctx context.Context, planID uuid.UUID) ([
 		if err != nil {
 			return nil, err
 		}
-		item.ID = itemID.String()
+		item.ID = itemID
 		item.Verse = verse
 
 		items = append(items, &item)
 	}
 
 	return items, nil
+}
+
+// generateAdviceForProblem generates AI advice for a problem using OpenRouter
+func (r *Resolver) generateAdviceForProblem(ctx context.Context, problemID uuid.UUID) error {
+	// Get problem details
+	query := `SELECT title, description FROM problems WHERE id = $1`
+	var title, description string
+	err := r.DB.QueryRow(ctx, query, problemID).Scan(&title, &description)
+	if err != nil {
+		return fmt.Errorf("failed to get problem: %w", err)
+	}
+
+	// TODO: Implement verse similarity search here
+	// For now, use some example verses
+	verses := []string{
+		"Philippians 4:6-7 - Do not be anxious about anything, but in every situation, by prayer and petition, with thanksgiving, present your requests to God. And the peace of God, which transcends all understanding, will guard your hearts and your minds in Christ Jesus.",
+		"Jeremiah 29:11 - For I know the plans I have for you, declares the Lord, plans to prosper you and not to harm you, plans to give you hope and a future.",
+		"Matthew 11:28-30 - Come to me, all you who are weary and burdened, and I will give you rest. Take my yoke upon you and learn from me, for I am gentle and humble in heart, and you will find rest for your souls. For my yoke is easy and my burden is light.",
+	}
+
+	// Generate advice
+	advice, err := r.AIClient.GenerateAdvice(ctx, description, verses)
+	if err != nil {
+		return fmt.Errorf("failed to generate advice: %w", err)
+	}
+
+	// Update problem with advice
+	updateQuery := `UPDATE problems SET advice = $1, updated_at = $2 WHERE id = $3`
+	_, err = r.DB.Exec(ctx, updateQuery, advice, time.Now(), problemID)
+	if err != nil {
+		return fmt.Errorf("failed to update advice: %w", err)
+	}
+
+	return nil
 }
 
 func (r *Resolver) getVerseByID(ctx context.Context, verseID uuid.UUID) (*model.Verse, error) {
@@ -117,7 +154,7 @@ func (r *Resolver) getVerseByID(ctx context.Context, verseID uuid.UUID) (*model.
 	if err != nil {
 		return nil, err
 	}
-	verse.ID = vID.String()
+	verse.ID = vID
 
 	return &verse, nil
 }

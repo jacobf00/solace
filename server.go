@@ -17,6 +17,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/jacobf00/solace/database"
 	"github.com/jacobf00/solace/graph"
+	"github.com/jacobf00/solace/internal/ai"
 	"github.com/vektah/gqlparser/v2/ast"
 )
 
@@ -34,7 +35,14 @@ func main() {
 	defer database.CloseDB()
 
 	db := database.NewDB()
-	resolver := graph.NewResolver(db)
+
+	apiKey := os.Getenv("OPENROUTER_API_KEY")
+	if apiKey == "" {
+		log.Fatal("OPENROUTER_API_KEY environment variable is required")
+	}
+	aiClient := ai.NewClient(apiKey)
+
+	resolver := graph.NewResolver(db, aiClient)
 
 	srv := handler.New(graph.NewExecutableSchema(graph.Config{Resolvers: resolver}))
 
