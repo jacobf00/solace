@@ -1,15 +1,20 @@
 package main
 
 import (
+	"context"
 	"log"
 	"net/http"
 	"os"
+	"time"
 
+	"github.com/99designs/gqlgen/graphql"
 	"github.com/99designs/gqlgen/graphql/handler"
 	"github.com/99designs/gqlgen/graphql/handler/extension"
 	"github.com/99designs/gqlgen/graphql/handler/lru"
 	"github.com/99designs/gqlgen/graphql/handler/transport"
 	"github.com/99designs/gqlgen/graphql/playground"
+	"github.com/golang-jwt/jwt/v4"
+	"github.com/google/uuid"
 	"github.com/jacobf00/solace/database"
 	"github.com/jacobf00/solace/graph"
 	"github.com/vektah/gqlparser/v2/ast"
@@ -23,16 +28,13 @@ func main() {
 		port = defaultPort
 	}
 
-	// Initialize database connection
 	if err := database.InitDB(); err != nil {
 		log.Fatalf("Failed to initialize database: %v", err)
 	}
 	defer database.CloseDB()
 
-	// Create resolver with database connection
-	resolver := &graph.Resolver{
-		DB: database.DB,
-	}
+	db := database.NewDB()
+	resolver := graph.NewResolver(db)
 
 	srv := handler.New(graph.NewExecutableSchema(graph.Config{Resolvers: resolver}))
 
@@ -47,9 +49,51 @@ func main() {
 		Cache: lru.New[string](100),
 	})
 
+	srv.AroundResponses(func(ctx context.Context, next graphql.ResponseHandler) *graphql.Response {
+		ctx = setRequestStart(ctx)
+		return next(ctx)
+	})
+
 	http.Handle("/", playground.Handler("GraphQL playground", "/query"))
-	http.Handle("/query", srv)
+	http.Handle("/query", authMiddleware(srv))
 
 	log.Printf("connect to http://localhost:%s/ for GraphQL playground", port)
 	log.Fatal(http.ListenAndServe(":"+port, nil))
+}
+
+func setRequestStart(ctx context.Context) context.Context {
+	return context.WithValue(ctx, "requestStart", time.Now())
+}
+
+func authMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context()
+
+		authHeader := r.Header.Get("Authorization")
+		if authHeader != "" {
+			token := authHeader
+			if len(token) > 7 && token[:7] == "Bearer " {
+				token = token[7:]
+			}
+			if token != "" {
+				// Parse JWT to get user ID from 'sub' claim (without signature verification for now)
+				// TODO: Add proper JWT verification using Supabase JWKS
+				tokenObj, err := jwt.Parse(token, func(token *jwt.Token) (interface{}, error) {
+					return []byte("dummy"), nil // Not verifying signature
+				})
+				if err == nil {
+					if claims, ok := tokenObj.Claims.(jwt.MapClaims); ok {
+						if sub, ok := claims["sub"].(string); ok {
+							userID, err := uuid.Parse(sub)
+							if err == nil {
+								ctx = context.WithValue(ctx, "userID", userID)
+							}
+						}
+					}
+				}
+			}
+		}
+
+		next.ServeHTTP(w, r.WithContext(ctx))
+	})
 }

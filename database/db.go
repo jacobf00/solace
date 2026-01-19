@@ -1,51 +1,59 @@
 package database
 
 import (
-	"database/sql"
+	"context"
 	"fmt"
 	"log"
+	"net/url"
 	"os"
+	"time"
 
-	_ "github.com/lib/pq"
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-var DB *sql.DB
+var Pool *pgxpool.Pool
 
 func InitDB() error {
-	// Get database connection parameters from environment variables or use defaults
-	host := getEnv("DB_HOST", "localhost")
-	port := getEnv("DB_PORT", "5432")
-	user := getEnv("DB_USER", os.Getenv("USER"))
-	password := getEnv("DB_PASSWORD", "")
-	dbname := getEnv("DB_NAME", "postgres")
-	sslmode := getEnv("DB_SSLMODE", "disable")
+	supabaseURL := getEnv("SUPABASE_URL", "")
+	serviceKey := getEnv("SUPABASE_SERVICE_KEY", "")
 
-	// Create connection string
-	connStr := fmt.Sprintf("host=%s port=%s user=%s dbname=%s sslmode=%s",
-		host, port, user, dbname, sslmode)
-
-	if password != "" {
-		connStr += fmt.Sprintf(" password=%s", password)
+	if supabaseURL == "" || serviceKey == "" {
+		return fmt.Errorf("SUPABASE_URL and SUPABASE_SERVICE_KEY must be set")
 	}
 
-	var err error
-	DB, err = sql.Open("postgres", connStr)
+	// Parse host from SUPABASE_URL
+	u, err := url.Parse(supabaseURL)
 	if err != nil {
-		return fmt.Errorf("failed to open database connection: %w", err)
+		return fmt.Errorf("invalid SUPABASE_URL: %w", err)
+	}
+	host := u.Host
+
+	connStr := fmt.Sprintf("postgresql://postgres:%s@%s:5432/postgres?sslmode=require",
+		serviceKey, host)
+
+	poolConfig, err := pgxpool.ParseConfig(connStr)
+	if err != nil {
+		return fmt.Errorf("failed to parse pool config: %w", err)
 	}
 
-	// Test the connection
-	if err = DB.Ping(); err != nil {
+	pool, err := pgxpool.NewWithConfig(context.Background(), poolConfig)
+	if err != nil {
+		return fmt.Errorf("failed to create connection pool: %w", err)
+	}
+
+	if err = pool.Ping(context.Background()); err != nil {
 		return fmt.Errorf("failed to ping database: %w", err)
 	}
 
-	log.Println("Successfully connected to PostgreSQL database")
+	Pool = pool
+	log.Println("Successfully connected to Supabase PostgreSQL database with pgx")
 	return nil
 }
 
 func CloseDB() {
-	if DB != nil {
-		DB.Close()
+	if Pool != nil {
+		Pool.Close()
 	}
 }
 
@@ -54,4 +62,32 @@ func getEnv(key, defaultValue string) string {
 		return value
 	}
 	return defaultValue
+}
+
+type DB struct {
+	Pool *pgxpool.Pool
+}
+
+func NewDB() *DB {
+	return &DB{Pool: Pool}
+}
+
+func (db *DB) Query(ctx context.Context, sql string, args ...interface{}) (pgx.Rows, error) {
+	return db.Pool.Query(ctx, sql, args...)
+}
+
+func (db *DB) QueryRow(ctx context.Context, sql string, args ...interface{}) pgx.Row {
+	return db.Pool.QueryRow(ctx, sql, args...)
+}
+
+func (db *DB) Exec(ctx context.Context, sql string, args ...interface{}) (int64, error) {
+	result, err := db.Pool.Exec(ctx, sql, args...)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+func (db *DB) GetTimeout() time.Duration {
+	return 30 * time.Second
 }
