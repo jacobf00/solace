@@ -4,6 +4,8 @@ package model
 
 import (
 	"time"
+
+	"github.com/google/uuid"
 )
 
 type AuthResponse struct {
@@ -12,9 +14,9 @@ type AuthResponse struct {
 }
 
 type Feedback struct {
-	ID           string     `json:"id"`
-	ProblemID    string     `json:"problemId"`
-	UserID       *string    `json:"userId,omitempty"`
+	ID           uuid.UUID  `json:"id"`
+	ProblemID    uuid.UUID  `json:"problemId"`
+	UserID       *uuid.UUID `json:"userId,omitempty"`
 	Rating       int32      `json:"rating"`
 	FeedbackText *string    `json:"feedbackText,omitempty"`
 	IsHelpful    *bool      `json:"isHelpful,omitempty"`
@@ -23,32 +25,32 @@ type Feedback struct {
 }
 
 type FeedbackInput struct {
-	ProblemID    string  `json:"problemId"`
-	Rating       int32   `json:"rating"`
-	FeedbackText *string `json:"feedbackText,omitempty"`
+	ProblemID    uuid.UUID `json:"problemId"`
+	Rating       int32     `json:"rating"`
+	FeedbackText *string   `json:"feedbackText,omitempty"`
 }
 
 type Mutation struct {
 }
 
 type PlanChanges struct {
-	AddedVerses     []string `json:"addedVerses,omitempty"`
-	RemovedVerses   []string `json:"removedVerses,omitempty"`
-	ReorderedVerses []string `json:"reorderedVerses,omitempty"`
-	Notes           *string  `json:"notes,omitempty"`
+	AddedVerses     []uuid.UUID `json:"addedVerses,omitempty"`
+	RemovedVerses   []uuid.UUID `json:"removedVerses,omitempty"`
+	ReorderedVerses []uuid.UUID `json:"reorderedVerses,omitempty"`
+	Notes           *string     `json:"notes,omitempty"`
 }
 
 type PlanRevision struct {
-	ID             string    `json:"id"`
-	ReadingPlanID  string    `json:"readingPlanId"`
-	RevisionNumber int32     `json:"revisionNumber"`
-	Changes        string    `json:"changes"`
-	CreatedBy      *string   `json:"createdBy,omitempty"`
-	CreatedAt      time.Time `json:"createdAt"`
+	ID             uuid.UUID  `json:"id"`
+	ReadingPlanID  uuid.UUID  `json:"readingPlanId"`
+	RevisionNumber int32      `json:"revisionNumber"`
+	Changes        string     `json:"changes"`
+	CreatedBy      *uuid.UUID `json:"createdBy,omitempty"`
+	CreatedAt      time.Time  `json:"createdAt"`
 }
 
 type Problem struct {
-	ID          string       `json:"id"`
+	ID          uuid.UUID    `json:"id"`
 	Title       string       `json:"title"`
 	Description string       `json:"description"`
 	Context     *string      `json:"context,omitempty"`
@@ -57,14 +59,14 @@ type Problem struct {
 	UpdatedAt   *time.Time   `json:"updatedAt,omitempty"`
 	ReadingPlan *ReadingPlan `json:"readingPlan,omitempty"`
 	Advice      *string      `json:"advice,omitempty"`
-	UserID      string       `json:"userId"`
+	UserID      uuid.UUID    `json:"userId"`
 }
 
 type Query struct {
 }
 
 type ReadingPlan struct {
-	ID        string             `json:"id"`
+	ID        uuid.UUID          `json:"id"`
 	Problem   *Problem           `json:"problem"`
 	CreatedAt time.Time          `json:"createdAt"`
 	UpdatedAt *time.Time         `json:"updatedAt,omitempty"`
@@ -72,7 +74,7 @@ type ReadingPlan struct {
 }
 
 type ReadingPlanItem struct {
-	ID        string     `json:"id"`
+	ID        uuid.UUID  `json:"id"`
 	Verse     *Verse     `json:"verse"`
 	ItemOrder int32      `json:"itemOrder"`
 	IsRead    bool       `json:"isRead"`
@@ -81,7 +83,7 @@ type ReadingPlanItem struct {
 }
 
 type User struct {
-	ID        string     `json:"id"`
+	ID        uuid.UUID  `json:"id"`
 	Username  string     `json:"username"`
 	Email     string     `json:"email"`
 	Problems  []*Problem `json:"problems"`
@@ -89,16 +91,16 @@ type User struct {
 }
 
 type Verse struct {
-	ID      string `json:"id"`
-	Book    string `json:"book"`
-	Chapter int32  `json:"chapter"`
-	Verse   int32  `json:"verse"`
-	Text    string `json:"text"`
+	ID      uuid.UUID `json:"id"`
+	Book    string    `json:"book"`
+	Chapter int32     `json:"chapter"`
+	Verse   int32     `json:"verse"`
+	Text    string    `json:"text"`
 }
 
 type VerseTopic struct {
-	ID         string    `json:"id"`
-	VerseID    string    `json:"verseId"`
+	ID         uuid.UUID `json:"id"`
+	VerseID    uuid.UUID `json:"verseId"`
 	Topic      string    `json:"topic"`
 	Confidence float64   `json:"confidence"`
 	CreatedAt  time.Time `json:"createdAt"`

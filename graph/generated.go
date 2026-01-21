@@ -15,6 +15,7 @@ import (
 
 	"github.com/99designs/gqlgen/graphql"
 	"github.com/99designs/gqlgen/graphql/introspection"
+	"github.com/google/uuid"
 	"github.com/jacobf00/solace/graph/model"
 	gqlparser "github.com/vektah/gqlparser/v2"
 	"github.com/vektah/gqlparser/v2/ast"
@@ -65,17 +66,17 @@ type ComplexityRoot struct {
 	}
 
 	Mutation struct {
-		CreateFeedback        func(childComplexity int, problemID string, rating int32, feedbackText *string) int
+		CreateFeedback        func(childComplexity int, problemID uuid.UUID, rating int32, feedbackText *string) int
 		CreateProblem         func(childComplexity int, title string, description string, context *string, category *string) int
-		CreateReadingPlan     func(childComplexity int, problemID string, verseIds []string) int
+		CreateReadingPlan     func(childComplexity int, problemID uuid.UUID, verseIds []uuid.UUID) int
 		CreateUser            func(childComplexity int, username string, email string, password string) int
-		DeleteProblem         func(childComplexity int, id string) int
+		DeleteProblem         func(childComplexity int, id uuid.UUID) int
 		Login                 func(childComplexity int, email string, password string) int
-		MarkVerseAsRead       func(childComplexity int, readingPlanID string, verseID string, isRead bool) int
-		ReviseReadingPlan     func(childComplexity int, planID string, changes model.PlanChanges) int
-		SubmitFeedback        func(childComplexity int, problemID string, rating int32, feedbackText *string) int
-		UpdateProblemAdvice   func(childComplexity int, problemID string, advice string) int
-		UpdateReadingProgress func(childComplexity int, readingPlanID string, verseID string, isRead bool) int
+		MarkVerseAsRead       func(childComplexity int, readingPlanID uuid.UUID, verseID uuid.UUID, isRead bool) int
+		ReviseReadingPlan     func(childComplexity int, planID uuid.UUID, changes model.PlanChanges) int
+		SubmitFeedback        func(childComplexity int, problemID uuid.UUID, rating int32, feedbackText *string) int
+		UpdateProblemAdvice   func(childComplexity int, problemID uuid.UUID, advice string) int
+		UpdateReadingProgress func(childComplexity int, readingPlanID uuid.UUID, verseID uuid.UUID, isRead bool) int
 	}
 
 	PlanRevision struct {
@@ -104,11 +105,11 @@ type ComplexityRoot struct {
 		AllBooks      func(childComplexity int) int
 		Me            func(childComplexity int) int
 		MyProblems    func(childComplexity int) int
-		Problem       func(childComplexity int, id string) int
-		ReadingPlan   func(childComplexity int, id string) int
+		Problem       func(childComplexity int, id uuid.UUID) int
+		ReadingPlan   func(childComplexity int, id uuid.UUID) int
 		SearchVerses  func(childComplexity int, query string, limit *int32) int
-		User          func(childComplexity int, id string) int
-		Verse         func(childComplexity int, id string) int
+		User          func(childComplexity int, id uuid.UUID) int
+		Verse         func(childComplexity int, id uuid.UUID) int
 		VersesByBook  func(childComplexity int, book string, chapter *int32) int
 		VersesByTopic func(childComplexity int, topic string, limit *int32) int
 	}
@@ -159,20 +160,20 @@ type MutationResolver interface {
 	CreateUser(ctx context.Context, username string, email string, password string) (*model.User, error)
 	Login(ctx context.Context, email string, password string) (*model.AuthResponse, error)
 	CreateProblem(ctx context.Context, title string, description string, context *string, category *string) (*model.Problem, error)
-	UpdateProblemAdvice(ctx context.Context, problemID string, advice string) (*model.Problem, error)
-	DeleteProblem(ctx context.Context, id string) (bool, error)
-	CreateReadingPlan(ctx context.Context, problemID string, verseIds []string) (*model.ReadingPlan, error)
-	MarkVerseAsRead(ctx context.Context, readingPlanID string, verseID string, isRead bool) (*model.ReadingPlanItem, error)
-	UpdateReadingProgress(ctx context.Context, readingPlanID string, verseID string, isRead bool) (*model.ReadingPlanItem, error)
-	ReviseReadingPlan(ctx context.Context, planID string, changes model.PlanChanges) (*model.ReadingPlan, error)
-	SubmitFeedback(ctx context.Context, problemID string, rating int32, feedbackText *string) (*model.Feedback, error)
-	CreateFeedback(ctx context.Context, problemID string, rating int32, feedbackText *string) (*model.Feedback, error)
+	UpdateProblemAdvice(ctx context.Context, problemID uuid.UUID, advice string) (*model.Problem, error)
+	DeleteProblem(ctx context.Context, id uuid.UUID) (bool, error)
+	CreateReadingPlan(ctx context.Context, problemID uuid.UUID, verseIds []uuid.UUID) (*model.ReadingPlan, error)
+	MarkVerseAsRead(ctx context.Context, readingPlanID uuid.UUID, verseID uuid.UUID, isRead bool) (*model.ReadingPlanItem, error)
+	UpdateReadingProgress(ctx context.Context, readingPlanID uuid.UUID, verseID uuid.UUID, isRead bool) (*model.ReadingPlanItem, error)
+	ReviseReadingPlan(ctx context.Context, planID uuid.UUID, changes model.PlanChanges) (*model.ReadingPlan, error)
+	SubmitFeedback(ctx context.Context, problemID uuid.UUID, rating int32, feedbackText *string) (*model.Feedback, error)
+	CreateFeedback(ctx context.Context, problemID uuid.UUID, rating int32, feedbackText *string) (*model.Feedback, error)
 }
 type QueryResolver interface {
-	User(ctx context.Context, id string) (*model.User, error)
-	Problem(ctx context.Context, id string) (*model.Problem, error)
-	ReadingPlan(ctx context.Context, id string) (*model.ReadingPlan, error)
-	Verse(ctx context.Context, id string) (*model.Verse, error)
+	User(ctx context.Context, id uuid.UUID) (*model.User, error)
+	Problem(ctx context.Context, id uuid.UUID) (*model.Problem, error)
+	ReadingPlan(ctx context.Context, id uuid.UUID) (*model.ReadingPlan, error)
+	Verse(ctx context.Context, id uuid.UUID) (*model.Verse, error)
 	VersesByBook(ctx context.Context, book string, chapter *int32) ([]*model.Verse, error)
 	AllBooks(ctx context.Context) ([]string, error)
 	Me(ctx context.Context) (*model.User, error)
@@ -272,7 +273,7 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 			return 0, false
 		}
 
-		return e.complexity.Mutation.CreateFeedback(childComplexity, args["problemId"].(string), args["rating"].(int32), args["feedbackText"].(*string)), true
+		return e.complexity.Mutation.CreateFeedback(childComplexity, args["problemId"].(uuid.UUID), args["rating"].(int32), args["feedbackText"].(*string)), true
 	case "Mutation.createProblem":
 		if e.complexity.Mutation.CreateProblem == nil {
 			break
@@ -294,7 +295,7 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 			return 0, false
 		}
 
-		return e.complexity.Mutation.CreateReadingPlan(childComplexity, args["problemId"].(string), args["verseIds"].([]string)), true
+		return e.complexity.Mutation.CreateReadingPlan(childComplexity, args["problemId"].(uuid.UUID), args["verseIds"].([]uuid.UUID)), true
 	case "Mutation.createUser":
 		if e.complexity.Mutation.CreateUser == nil {
 			break
@@ -316,7 +317,7 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 			return 0, false
 		}
 
-		return e.complexity.Mutation.DeleteProblem(childComplexity, args["id"].(string)), true
+		return e.complexity.Mutation.DeleteProblem(childComplexity, args["id"].(uuid.UUID)), true
 	case "Mutation.login":
 		if e.complexity.Mutation.Login == nil {
 			break
@@ -338,7 +339,7 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 			return 0, false
 		}
 
-		return e.complexity.Mutation.MarkVerseAsRead(childComplexity, args["readingPlanId"].(string), args["verseId"].(string), args["isRead"].(bool)), true
+		return e.complexity.Mutation.MarkVerseAsRead(childComplexity, args["readingPlanId"].(uuid.UUID), args["verseId"].(uuid.UUID), args["isRead"].(bool)), true
 	case "Mutation.reviseReadingPlan":
 		if e.complexity.Mutation.ReviseReadingPlan == nil {
 			break
@@ -349,7 +350,7 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 			return 0, false
 		}
 
-		return e.complexity.Mutation.ReviseReadingPlan(childComplexity, args["planId"].(string), args["changes"].(model.PlanChanges)), true
+		return e.complexity.Mutation.ReviseReadingPlan(childComplexity, args["planId"].(uuid.UUID), args["changes"].(model.PlanChanges)), true
 	case "Mutation.submitFeedback":
 		if e.complexity.Mutation.SubmitFeedback == nil {
 			break
@@ -360,7 +361,7 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 			return 0, false
 		}
 
-		return e.complexity.Mutation.SubmitFeedback(childComplexity, args["problemId"].(string), args["rating"].(int32), args["feedbackText"].(*string)), true
+		return e.complexity.Mutation.SubmitFeedback(childComplexity, args["problemId"].(uuid.UUID), args["rating"].(int32), args["feedbackText"].(*string)), true
 	case "Mutation.updateProblemAdvice":
 		if e.complexity.Mutation.UpdateProblemAdvice == nil {
 			break
@@ -371,7 +372,7 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 			return 0, false
 		}
 
-		return e.complexity.Mutation.UpdateProblemAdvice(childComplexity, args["problemId"].(string), args["advice"].(string)), true
+		return e.complexity.Mutation.UpdateProblemAdvice(childComplexity, args["problemId"].(uuid.UUID), args["advice"].(string)), true
 	case "Mutation.updateReadingProgress":
 		if e.complexity.Mutation.UpdateReadingProgress == nil {
 			break
@@ -382,7 +383,7 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 			return 0, false
 		}
 
-		return e.complexity.Mutation.UpdateReadingProgress(childComplexity, args["readingPlanId"].(string), args["verseId"].(string), args["isRead"].(bool)), true
+		return e.complexity.Mutation.UpdateReadingProgress(childComplexity, args["readingPlanId"].(uuid.UUID), args["verseId"].(uuid.UUID), args["isRead"].(bool)), true
 
 	case "PlanRevision.changes":
 		if e.complexity.PlanRevision.Changes == nil {
@@ -510,7 +511,7 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 			return 0, false
 		}
 
-		return e.complexity.Query.Problem(childComplexity, args["id"].(string)), true
+		return e.complexity.Query.Problem(childComplexity, args["id"].(uuid.UUID)), true
 	case "Query.readingPlan":
 		if e.complexity.Query.ReadingPlan == nil {
 			break
@@ -521,7 +522,7 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 			return 0, false
 		}
 
-		return e.complexity.Query.ReadingPlan(childComplexity, args["id"].(string)), true
+		return e.complexity.Query.ReadingPlan(childComplexity, args["id"].(uuid.UUID)), true
 	case "Query.searchVerses":
 		if e.complexity.Query.SearchVerses == nil {
 			break
@@ -543,7 +544,7 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 			return 0, false
 		}
 
-		return e.complexity.Query.User(childComplexity, args["id"].(string)), true
+		return e.complexity.Query.User(childComplexity, args["id"].(uuid.UUID)), true
 	case "Query.verse":
 		if e.complexity.Query.Verse == nil {
 			break
@@ -554,7 +555,7 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 			return 0, false
 		}
 
-		return e.complexity.Query.Verse(childComplexity, args["id"].(string)), true
+		return e.complexity.Query.Verse(childComplexity, args["id"].(uuid.UUID)), true
 	case "Query.versesByBook":
 		if e.complexity.Query.VersesByBook == nil {
 			break
@@ -868,7 +869,7 @@ var parsedSchema = gqlparser.MustLoadSchema(sources...)
 func (ec *executionContext) field_Mutation_createFeedback_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
-	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "problemId", ec.unmarshalNUUID2string)
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "problemId", ec.unmarshalNUUID2githubᚗcomᚋgoogleᚋuuidᚐUUID)
 	if err != nil {
 		return nil, err
 	}
@@ -915,12 +916,12 @@ func (ec *executionContext) field_Mutation_createProblem_args(ctx context.Contex
 func (ec *executionContext) field_Mutation_createReadingPlan_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
-	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "problemId", ec.unmarshalNUUID2string)
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "problemId", ec.unmarshalNUUID2githubᚗcomᚋgoogleᚋuuidᚐUUID)
 	if err != nil {
 		return nil, err
 	}
 	args["problemId"] = arg0
-	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "verseIds", ec.unmarshalNUUID2ᚕstringᚄ)
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "verseIds", ec.unmarshalNUUID2ᚕgithubᚗcomᚋgoogleᚋuuidᚐUUIDᚄ)
 	if err != nil {
 		return nil, err
 	}
@@ -952,7 +953,7 @@ func (ec *executionContext) field_Mutation_createUser_args(ctx context.Context, 
 func (ec *executionContext) field_Mutation_deleteProblem_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
-	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "id", ec.unmarshalNUUID2string)
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "id", ec.unmarshalNUUID2githubᚗcomᚋgoogleᚋuuidᚐUUID)
 	if err != nil {
 		return nil, err
 	}
@@ -979,12 +980,12 @@ func (ec *executionContext) field_Mutation_login_args(ctx context.Context, rawAr
 func (ec *executionContext) field_Mutation_markVerseAsRead_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
-	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "readingPlanId", ec.unmarshalNUUID2string)
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "readingPlanId", ec.unmarshalNUUID2githubᚗcomᚋgoogleᚋuuidᚐUUID)
 	if err != nil {
 		return nil, err
 	}
 	args["readingPlanId"] = arg0
-	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "verseId", ec.unmarshalNUUID2string)
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "verseId", ec.unmarshalNUUID2githubᚗcomᚋgoogleᚋuuidᚐUUID)
 	if err != nil {
 		return nil, err
 	}
@@ -1000,7 +1001,7 @@ func (ec *executionContext) field_Mutation_markVerseAsRead_args(ctx context.Cont
 func (ec *executionContext) field_Mutation_reviseReadingPlan_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
-	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "planId", ec.unmarshalNUUID2string)
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "planId", ec.unmarshalNUUID2githubᚗcomᚋgoogleᚋuuidᚐUUID)
 	if err != nil {
 		return nil, err
 	}
@@ -1016,7 +1017,7 @@ func (ec *executionContext) field_Mutation_reviseReadingPlan_args(ctx context.Co
 func (ec *executionContext) field_Mutation_submitFeedback_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
-	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "problemId", ec.unmarshalNUUID2string)
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "problemId", ec.unmarshalNUUID2githubᚗcomᚋgoogleᚋuuidᚐUUID)
 	if err != nil {
 		return nil, err
 	}
@@ -1037,7 +1038,7 @@ func (ec *executionContext) field_Mutation_submitFeedback_args(ctx context.Conte
 func (ec *executionContext) field_Mutation_updateProblemAdvice_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
-	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "problemId", ec.unmarshalNUUID2string)
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "problemId", ec.unmarshalNUUID2githubᚗcomᚋgoogleᚋuuidᚐUUID)
 	if err != nil {
 		return nil, err
 	}
@@ -1053,12 +1054,12 @@ func (ec *executionContext) field_Mutation_updateProblemAdvice_args(ctx context.
 func (ec *executionContext) field_Mutation_updateReadingProgress_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
-	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "readingPlanId", ec.unmarshalNUUID2string)
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "readingPlanId", ec.unmarshalNUUID2githubᚗcomᚋgoogleᚋuuidᚐUUID)
 	if err != nil {
 		return nil, err
 	}
 	args["readingPlanId"] = arg0
-	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "verseId", ec.unmarshalNUUID2string)
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "verseId", ec.unmarshalNUUID2githubᚗcomᚋgoogleᚋuuidᚐUUID)
 	if err != nil {
 		return nil, err
 	}
@@ -1085,7 +1086,7 @@ func (ec *executionContext) field_Query___type_args(ctx context.Context, rawArgs
 func (ec *executionContext) field_Query_problem_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
-	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "id", ec.unmarshalNUUID2string)
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "id", ec.unmarshalNUUID2githubᚗcomᚋgoogleᚋuuidᚐUUID)
 	if err != nil {
 		return nil, err
 	}
@@ -1096,7 +1097,7 @@ func (ec *executionContext) field_Query_problem_args(ctx context.Context, rawArg
 func (ec *executionContext) field_Query_readingPlan_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
-	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "id", ec.unmarshalNUUID2string)
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "id", ec.unmarshalNUUID2githubᚗcomᚋgoogleᚋuuidᚐUUID)
 	if err != nil {
 		return nil, err
 	}
@@ -1123,7 +1124,7 @@ func (ec *executionContext) field_Query_searchVerses_args(ctx context.Context, r
 func (ec *executionContext) field_Query_user_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
-	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "id", ec.unmarshalNUUID2string)
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "id", ec.unmarshalNUUID2githubᚗcomᚋgoogleᚋuuidᚐUUID)
 	if err != nil {
 		return nil, err
 	}
@@ -1134,7 +1135,7 @@ func (ec *executionContext) field_Query_user_args(ctx context.Context, rawArgs m
 func (ec *executionContext) field_Query_verse_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
-	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "id", ec.unmarshalNUUID2string)
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "id", ec.unmarshalNUUID2githubᚗcomᚋgoogleᚋuuidᚐUUID)
 	if err != nil {
 		return nil, err
 	}
@@ -1306,7 +1307,7 @@ func (ec *executionContext) _Feedback_id(ctx context.Context, field graphql.Coll
 			return obj.ID, nil
 		},
 		nil,
-		ec.marshalNUUID2string,
+		ec.marshalNUUID2githubᚗcomᚋgoogleᚋuuidᚐUUID,
 		true,
 		true,
 	)
@@ -1335,7 +1336,7 @@ func (ec *executionContext) _Feedback_problemId(ctx context.Context, field graph
 			return obj.ProblemID, nil
 		},
 		nil,
-		ec.marshalNUUID2string,
+		ec.marshalNUUID2githubᚗcomᚋgoogleᚋuuidᚐUUID,
 		true,
 		true,
 	)
@@ -1364,7 +1365,7 @@ func (ec *executionContext) _Feedback_userId(ctx context.Context, field graphql.
 			return obj.UserID, nil
 		},
 		nil,
-		ec.marshalOUUID2ᚖstring,
+		ec.marshalOUUID2ᚖgithubᚗcomᚋgoogleᚋuuidᚐUUID,
 		true,
 		false,
 	)
@@ -1699,7 +1700,7 @@ func (ec *executionContext) _Mutation_updateProblemAdvice(ctx context.Context, f
 		ec.fieldContext_Mutation_updateProblemAdvice,
 		func(ctx context.Context) (any, error) {
 			fc := graphql.GetFieldContext(ctx)
-			return ec.resolvers.Mutation().UpdateProblemAdvice(ctx, fc.Args["problemId"].(string), fc.Args["advice"].(string))
+			return ec.resolvers.Mutation().UpdateProblemAdvice(ctx, fc.Args["problemId"].(uuid.UUID), fc.Args["advice"].(string))
 		},
 		nil,
 		ec.marshalNProblem2ᚖgithubᚗcomᚋjacobf00ᚋsolaceᚋgraphᚋmodelᚐProblem,
@@ -1762,7 +1763,7 @@ func (ec *executionContext) _Mutation_deleteProblem(ctx context.Context, field g
 		ec.fieldContext_Mutation_deleteProblem,
 		func(ctx context.Context) (any, error) {
 			fc := graphql.GetFieldContext(ctx)
-			return ec.resolvers.Mutation().DeleteProblem(ctx, fc.Args["id"].(string))
+			return ec.resolvers.Mutation().DeleteProblem(ctx, fc.Args["id"].(uuid.UUID))
 		},
 		nil,
 		ec.marshalNBoolean2bool,
@@ -1803,7 +1804,7 @@ func (ec *executionContext) _Mutation_createReadingPlan(ctx context.Context, fie
 		ec.fieldContext_Mutation_createReadingPlan,
 		func(ctx context.Context) (any, error) {
 			fc := graphql.GetFieldContext(ctx)
-			return ec.resolvers.Mutation().CreateReadingPlan(ctx, fc.Args["problemId"].(string), fc.Args["verseIds"].([]string))
+			return ec.resolvers.Mutation().CreateReadingPlan(ctx, fc.Args["problemId"].(uuid.UUID), fc.Args["verseIds"].([]uuid.UUID))
 		},
 		nil,
 		ec.marshalNReadingPlan2ᚖgithubᚗcomᚋjacobf00ᚋsolaceᚋgraphᚋmodelᚐReadingPlan,
@@ -1856,7 +1857,7 @@ func (ec *executionContext) _Mutation_markVerseAsRead(ctx context.Context, field
 		ec.fieldContext_Mutation_markVerseAsRead,
 		func(ctx context.Context) (any, error) {
 			fc := graphql.GetFieldContext(ctx)
-			return ec.resolvers.Mutation().MarkVerseAsRead(ctx, fc.Args["readingPlanId"].(string), fc.Args["verseId"].(string), fc.Args["isRead"].(bool))
+			return ec.resolvers.Mutation().MarkVerseAsRead(ctx, fc.Args["readingPlanId"].(uuid.UUID), fc.Args["verseId"].(uuid.UUID), fc.Args["isRead"].(bool))
 		},
 		nil,
 		ec.marshalOReadingPlanItem2ᚖgithubᚗcomᚋjacobf00ᚋsolaceᚋgraphᚋmodelᚐReadingPlanItem,
@@ -1911,7 +1912,7 @@ func (ec *executionContext) _Mutation_updateReadingProgress(ctx context.Context,
 		ec.fieldContext_Mutation_updateReadingProgress,
 		func(ctx context.Context) (any, error) {
 			fc := graphql.GetFieldContext(ctx)
-			return ec.resolvers.Mutation().UpdateReadingProgress(ctx, fc.Args["readingPlanId"].(string), fc.Args["verseId"].(string), fc.Args["isRead"].(bool))
+			return ec.resolvers.Mutation().UpdateReadingProgress(ctx, fc.Args["readingPlanId"].(uuid.UUID), fc.Args["verseId"].(uuid.UUID), fc.Args["isRead"].(bool))
 		},
 		nil,
 		ec.marshalOReadingPlanItem2ᚖgithubᚗcomᚋjacobf00ᚋsolaceᚋgraphᚋmodelᚐReadingPlanItem,
@@ -1966,7 +1967,7 @@ func (ec *executionContext) _Mutation_reviseReadingPlan(ctx context.Context, fie
 		ec.fieldContext_Mutation_reviseReadingPlan,
 		func(ctx context.Context) (any, error) {
 			fc := graphql.GetFieldContext(ctx)
-			return ec.resolvers.Mutation().ReviseReadingPlan(ctx, fc.Args["planId"].(string), fc.Args["changes"].(model.PlanChanges))
+			return ec.resolvers.Mutation().ReviseReadingPlan(ctx, fc.Args["planId"].(uuid.UUID), fc.Args["changes"].(model.PlanChanges))
 		},
 		nil,
 		ec.marshalOReadingPlan2ᚖgithubᚗcomᚋjacobf00ᚋsolaceᚋgraphᚋmodelᚐReadingPlan,
@@ -2019,7 +2020,7 @@ func (ec *executionContext) _Mutation_submitFeedback(ctx context.Context, field 
 		ec.fieldContext_Mutation_submitFeedback,
 		func(ctx context.Context) (any, error) {
 			fc := graphql.GetFieldContext(ctx)
-			return ec.resolvers.Mutation().SubmitFeedback(ctx, fc.Args["problemId"].(string), fc.Args["rating"].(int32), fc.Args["feedbackText"].(*string))
+			return ec.resolvers.Mutation().SubmitFeedback(ctx, fc.Args["problemId"].(uuid.UUID), fc.Args["rating"].(int32), fc.Args["feedbackText"].(*string))
 		},
 		nil,
 		ec.marshalOFeedback2ᚖgithubᚗcomᚋjacobf00ᚋsolaceᚋgraphᚋmodelᚐFeedback,
@@ -2078,7 +2079,7 @@ func (ec *executionContext) _Mutation_createFeedback(ctx context.Context, field 
 		ec.fieldContext_Mutation_createFeedback,
 		func(ctx context.Context) (any, error) {
 			fc := graphql.GetFieldContext(ctx)
-			return ec.resolvers.Mutation().CreateFeedback(ctx, fc.Args["problemId"].(string), fc.Args["rating"].(int32), fc.Args["feedbackText"].(*string))
+			return ec.resolvers.Mutation().CreateFeedback(ctx, fc.Args["problemId"].(uuid.UUID), fc.Args["rating"].(int32), fc.Args["feedbackText"].(*string))
 		},
 		nil,
 		ec.marshalOFeedback2ᚖgithubᚗcomᚋjacobf00ᚋsolaceᚋgraphᚋmodelᚐFeedback,
@@ -2139,7 +2140,7 @@ func (ec *executionContext) _PlanRevision_id(ctx context.Context, field graphql.
 			return obj.ID, nil
 		},
 		nil,
-		ec.marshalNUUID2string,
+		ec.marshalNUUID2githubᚗcomᚋgoogleᚋuuidᚐUUID,
 		true,
 		true,
 	)
@@ -2168,7 +2169,7 @@ func (ec *executionContext) _PlanRevision_readingPlanId(ctx context.Context, fie
 			return obj.ReadingPlanID, nil
 		},
 		nil,
-		ec.marshalNUUID2string,
+		ec.marshalNUUID2githubᚗcomᚋgoogleᚋuuidᚐUUID,
 		true,
 		true,
 	)
@@ -2255,7 +2256,7 @@ func (ec *executionContext) _PlanRevision_createdBy(ctx context.Context, field g
 			return obj.CreatedBy, nil
 		},
 		nil,
-		ec.marshalOUUID2ᚖstring,
+		ec.marshalOUUID2ᚖgithubᚗcomᚋgoogleᚋuuidᚐUUID,
 		true,
 		false,
 	)
@@ -2313,7 +2314,7 @@ func (ec *executionContext) _Problem_id(ctx context.Context, field graphql.Colle
 			return obj.ID, nil
 		},
 		nil,
-		ec.marshalNUUID2string,
+		ec.marshalNUUID2githubᚗcomᚋgoogleᚋuuidᚐUUID,
 		true,
 		true,
 	)
@@ -2586,7 +2587,7 @@ func (ec *executionContext) _Problem_userId(ctx context.Context, field graphql.C
 			return obj.UserID, nil
 		},
 		nil,
-		ec.marshalNUUID2string,
+		ec.marshalNUUID2githubᚗcomᚋgoogleᚋuuidᚐUUID,
 		true,
 		true,
 	)
@@ -2613,7 +2614,7 @@ func (ec *executionContext) _Query_user(ctx context.Context, field graphql.Colle
 		ec.fieldContext_Query_user,
 		func(ctx context.Context) (any, error) {
 			fc := graphql.GetFieldContext(ctx)
-			return ec.resolvers.Query().User(ctx, fc.Args["id"].(string))
+			return ec.resolvers.Query().User(ctx, fc.Args["id"].(uuid.UUID))
 		},
 		nil,
 		ec.marshalOUser2ᚖgithubᚗcomᚋjacobf00ᚋsolaceᚋgraphᚋmodelᚐUser,
@@ -2666,7 +2667,7 @@ func (ec *executionContext) _Query_problem(ctx context.Context, field graphql.Co
 		ec.fieldContext_Query_problem,
 		func(ctx context.Context) (any, error) {
 			fc := graphql.GetFieldContext(ctx)
-			return ec.resolvers.Query().Problem(ctx, fc.Args["id"].(string))
+			return ec.resolvers.Query().Problem(ctx, fc.Args["id"].(uuid.UUID))
 		},
 		nil,
 		ec.marshalOProblem2ᚖgithubᚗcomᚋjacobf00ᚋsolaceᚋgraphᚋmodelᚐProblem,
@@ -2729,7 +2730,7 @@ func (ec *executionContext) _Query_readingPlan(ctx context.Context, field graphq
 		ec.fieldContext_Query_readingPlan,
 		func(ctx context.Context) (any, error) {
 			fc := graphql.GetFieldContext(ctx)
-			return ec.resolvers.Query().ReadingPlan(ctx, fc.Args["id"].(string))
+			return ec.resolvers.Query().ReadingPlan(ctx, fc.Args["id"].(uuid.UUID))
 		},
 		nil,
 		ec.marshalOReadingPlan2ᚖgithubᚗcomᚋjacobf00ᚋsolaceᚋgraphᚋmodelᚐReadingPlan,
@@ -2782,7 +2783,7 @@ func (ec *executionContext) _Query_verse(ctx context.Context, field graphql.Coll
 		ec.fieldContext_Query_verse,
 		func(ctx context.Context) (any, error) {
 			fc := graphql.GetFieldContext(ctx)
-			return ec.resolvers.Query().Verse(ctx, fc.Args["id"].(string))
+			return ec.resolvers.Query().Verse(ctx, fc.Args["id"].(uuid.UUID))
 		},
 		nil,
 		ec.marshalOVerse2ᚖgithubᚗcomᚋjacobf00ᚋsolaceᚋgraphᚋmodelᚐVerse,
@@ -3225,7 +3226,7 @@ func (ec *executionContext) _ReadingPlan_id(ctx context.Context, field graphql.C
 			return obj.ID, nil
 		},
 		nil,
-		ec.marshalNUUID2string,
+		ec.marshalNUUID2githubᚗcomᚋgoogleᚋuuidᚐUUID,
 		true,
 		true,
 	)
@@ -3406,7 +3407,7 @@ func (ec *executionContext) _ReadingPlanItem_id(ctx context.Context, field graph
 			return obj.ID, nil
 		},
 		nil,
-		ec.marshalNUUID2string,
+		ec.marshalNUUID2githubᚗcomᚋgoogleᚋuuidᚐUUID,
 		true,
 		true,
 	)
@@ -3592,7 +3593,7 @@ func (ec *executionContext) _User_id(ctx context.Context, field graphql.Collecte
 			return obj.ID, nil
 		},
 		nil,
-		ec.marshalNUUID2string,
+		ec.marshalNUUID2githubᚗcomᚋgoogleᚋuuidᚐUUID,
 		true,
 		true,
 	)
@@ -3759,7 +3760,7 @@ func (ec *executionContext) _Verse_id(ctx context.Context, field graphql.Collect
 			return obj.ID, nil
 		},
 		nil,
-		ec.marshalNUUID2string,
+		ec.marshalNUUID2githubᚗcomᚋgoogleᚋuuidᚐUUID,
 		true,
 		true,
 	)
@@ -3904,7 +3905,7 @@ func (ec *executionContext) _VerseTopic_id(ctx context.Context, field graphql.Co
 			return obj.ID, nil
 		},
 		nil,
-		ec.marshalNUUID2string,
+		ec.marshalNUUID2githubᚗcomᚋgoogleᚋuuidᚐUUID,
 		true,
 		true,
 	)
@@ -3933,7 +3934,7 @@ func (ec *executionContext) _VerseTopic_verseId(ctx context.Context, field graph
 			return obj.VerseID, nil
 		},
 		nil,
-		ec.marshalNUUID2string,
+		ec.marshalNUUID2githubᚗcomᚋgoogleᚋuuidᚐUUID,
 		true,
 		true,
 	)
@@ -5501,7 +5502,7 @@ func (ec *executionContext) unmarshalInputFeedbackInput(ctx context.Context, obj
 		switch k {
 		case "problemId":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("problemId"))
-			data, err := ec.unmarshalNUUID2string(ctx, v)
+			data, err := ec.unmarshalNUUID2githubᚗcomᚋgoogleᚋuuidᚐUUID(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -5542,21 +5543,21 @@ func (ec *executionContext) unmarshalInputPlanChanges(ctx context.Context, obj a
 		switch k {
 		case "addedVerses":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("addedVerses"))
-			data, err := ec.unmarshalOUUID2ᚕstringᚄ(ctx, v)
+			data, err := ec.unmarshalOUUID2ᚕgithubᚗcomᚋgoogleᚋuuidᚐUUIDᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.AddedVerses = data
 		case "removedVerses":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("removedVerses"))
-			data, err := ec.unmarshalOUUID2ᚕstringᚄ(ctx, v)
+			data, err := ec.unmarshalOUUID2ᚕgithubᚗcomᚋgoogleᚋuuidᚐUUIDᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.RemovedVerses = data
 		case "reorderedVerses":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("reorderedVerses"))
-			data, err := ec.unmarshalOUUID2ᚕstringᚄ(ctx, v)
+			data, err := ec.unmarshalOUUID2ᚕgithubᚗcomᚋgoogleᚋuuidᚐUUIDᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -7044,30 +7045,23 @@ func (ec *executionContext) marshalNTime2timeᚐTime(ctx context.Context, sel as
 	return res
 }
 
-func (ec *executionContext) unmarshalNUUID2string(ctx context.Context, v any) (string, error) {
-	res, err := graphql.UnmarshalString(v)
+func (ec *executionContext) unmarshalNUUID2githubᚗcomᚋgoogleᚋuuidᚐUUID(ctx context.Context, v any) (uuid.UUID, error) {
+	res, err := ec.unmarshalInputUUID(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
 }
 
-func (ec *executionContext) marshalNUUID2string(ctx context.Context, sel ast.SelectionSet, v string) graphql.Marshaler {
-	_ = sel
-	res := graphql.MarshalString(v)
-	if res == graphql.Null {
-		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
-			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
-		}
-	}
-	return res
+func (ec *executionContext) marshalNUUID2githubᚗcomᚋgoogleᚋuuidᚐUUID(ctx context.Context, sel ast.SelectionSet, v uuid.UUID) graphql.Marshaler {
+	return ec._UUID(ctx, sel, &v)
 }
 
-func (ec *executionContext) unmarshalNUUID2ᚕstringᚄ(ctx context.Context, v any) ([]string, error) {
+func (ec *executionContext) unmarshalNUUID2ᚕgithubᚗcomᚋgoogleᚋuuidᚐUUIDᚄ(ctx context.Context, v any) ([]uuid.UUID, error) {
 	var vSlice []any
 	vSlice = graphql.CoerceList(v)
 	var err error
-	res := make([]string, len(vSlice))
+	res := make([]uuid.UUID, len(vSlice))
 	for i := range vSlice {
 		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithIndex(i))
-		res[i], err = ec.unmarshalNUUID2string(ctx, vSlice[i])
+		res[i], err = ec.unmarshalNUUID2githubᚗcomᚋgoogleᚋuuidᚐUUID(ctx, vSlice[i])
 		if err != nil {
 			return nil, err
 		}
@@ -7075,10 +7069,10 @@ func (ec *executionContext) unmarshalNUUID2ᚕstringᚄ(ctx context.Context, v a
 	return res, nil
 }
 
-func (ec *executionContext) marshalNUUID2ᚕstringᚄ(ctx context.Context, sel ast.SelectionSet, v []string) graphql.Marshaler {
+func (ec *executionContext) marshalNUUID2ᚕgithubᚗcomᚋgoogleᚋuuidᚐUUIDᚄ(ctx context.Context, sel ast.SelectionSet, v []uuid.UUID) graphql.Marshaler {
 	ret := make(graphql.Array, len(v))
 	for i := range v {
-		ret[i] = ec.marshalNUUID2string(ctx, sel, v[i])
+		ret[i] = ec.marshalNUUID2githubᚗcomᚋgoogleᚋuuidᚐUUID(ctx, sel, v[i])
 	}
 
 	for _, e := range ret {
@@ -7530,17 +7524,17 @@ func (ec *executionContext) marshalOTime2ᚖtimeᚐTime(ctx context.Context, sel
 	return res
 }
 
-func (ec *executionContext) unmarshalOUUID2ᚕstringᚄ(ctx context.Context, v any) ([]string, error) {
+func (ec *executionContext) unmarshalOUUID2ᚕgithubᚗcomᚋgoogleᚋuuidᚐUUIDᚄ(ctx context.Context, v any) ([]uuid.UUID, error) {
 	if v == nil {
 		return nil, nil
 	}
 	var vSlice []any
 	vSlice = graphql.CoerceList(v)
 	var err error
-	res := make([]string, len(vSlice))
+	res := make([]uuid.UUID, len(vSlice))
 	for i := range vSlice {
 		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithIndex(i))
-		res[i], err = ec.unmarshalNUUID2string(ctx, vSlice[i])
+		res[i], err = ec.unmarshalNUUID2githubᚗcomᚋgoogleᚋuuidᚐUUID(ctx, vSlice[i])
 		if err != nil {
 			return nil, err
 		}
@@ -7548,13 +7542,13 @@ func (ec *executionContext) unmarshalOUUID2ᚕstringᚄ(ctx context.Context, v a
 	return res, nil
 }
 
-func (ec *executionContext) marshalOUUID2ᚕstringᚄ(ctx context.Context, sel ast.SelectionSet, v []string) graphql.Marshaler {
+func (ec *executionContext) marshalOUUID2ᚕgithubᚗcomᚋgoogleᚋuuidᚐUUIDᚄ(ctx context.Context, sel ast.SelectionSet, v []uuid.UUID) graphql.Marshaler {
 	if v == nil {
 		return graphql.Null
 	}
 	ret := make(graphql.Array, len(v))
 	for i := range v {
-		ret[i] = ec.marshalNUUID2string(ctx, sel, v[i])
+		ret[i] = ec.marshalNUUID2githubᚗcomᚋgoogleᚋuuidᚐUUID(ctx, sel, v[i])
 	}
 
 	for _, e := range ret {
@@ -7566,22 +7560,19 @@ func (ec *executionContext) marshalOUUID2ᚕstringᚄ(ctx context.Context, sel a
 	return ret
 }
 
-func (ec *executionContext) unmarshalOUUID2ᚖstring(ctx context.Context, v any) (*string, error) {
+func (ec *executionContext) unmarshalOUUID2ᚖgithubᚗcomᚋgoogleᚋuuidᚐUUID(ctx context.Context, v any) (*uuid.UUID, error) {
 	if v == nil {
 		return nil, nil
 	}
-	res, err := graphql.UnmarshalString(v)
+	res, err := ec.unmarshalInputUUID(ctx, v)
 	return &res, graphql.ErrorOnPath(ctx, err)
 }
 
-func (ec *executionContext) marshalOUUID2ᚖstring(ctx context.Context, sel ast.SelectionSet, v *string) graphql.Marshaler {
+func (ec *executionContext) marshalOUUID2ᚖgithubᚗcomᚋgoogleᚋuuidᚐUUID(ctx context.Context, sel ast.SelectionSet, v *uuid.UUID) graphql.Marshaler {
 	if v == nil {
 		return graphql.Null
 	}
-	_ = sel
-	_ = ctx
-	res := graphql.MarshalString(*v)
-	return res
+	return ec._UUID(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalOUser2ᚖgithubᚗcomᚋjacobf00ᚋsolaceᚋgraphᚋmodelᚐUser(ctx context.Context, sel ast.SelectionSet, v *model.User) graphql.Marshaler {
