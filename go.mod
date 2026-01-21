@@ -70,6 +70,7 @@ require (
 	github.com/go-stack/stack v1.8.0 // indirect
 	github.com/go-viper/mapstructure/v2 v2.4.0 // indirect
 	github.com/goccy/go-json v0.9.11 // indirect
+	github.com/goccy/go-yaml v1.19.2 // indirect
 	github.com/gocql/gocql v0.0.0-20210515062232-b7ef815b4556 // indirect
 	github.com/godbus/dbus v0.0.0-20190726142602-4481cbc300e2 // indirect
 	github.com/golang-migrate/migrate/v4 v4.19.0 // indirect
@@ -136,6 +137,7 @@ require (
 	github.com/sosodev/duration v1.3.1 // indirect
 	github.com/stretchr/objx v0.5.2 // indirect
 	github.com/stretchr/testify v1.11.1 // indirect
+	github.com/urfave/cli/v3 v3.6.1 // indirect
 	github.com/xanzy/go-gitlab v0.15.0 // indirect
 	github.com/xdg-go/pbkdf2 v1.0.0 // indirect
 	github.com/xdg-go/scram v1.1.1 // indirect
@@ -194,4 +196,7 @@ require (
 	modernc.org/zappy v1.0.0 // indirect
 )
 
-tool github.com/golang-migrate/migrate/v4/cmd/migrate
+tool (
+	github.com/99designs/gqlgen
+	github.com/golang-migrate/migrate/v4/cmd/migrate
+)
