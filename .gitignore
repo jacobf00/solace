@@ -3,3 +3,5 @@ ASV.csv
 # Testing outputs
 coverage*.out
 testconfig/
+
+.env*
