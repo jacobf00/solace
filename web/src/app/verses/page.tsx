@@ -1,8 +1,14 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { graphqlRequest, VERSE_FRAGMENT } from '@/lib/graphql/client'
-import { Verse } from '@/types'
+
+interface Verse {
+  id: string
+  book: string
+  chapter: number
+  verse: number
+  text: string
+}
 
 export default function VersesPage() {
   const [books, setBooks] = useState<string[]>([])
@@ -18,14 +24,22 @@ export default function VersesPage() {
   useEffect(() => {
     async function loadBooks() {
       try {
-        const data = await graphqlRequest<{ allBooks: string[] }>(
-          `
-          query AllBooks {
-            allBooks
-          }
-        `
-        )
-        setBooks(data.allBooks || [])
+        const response = await fetch('/api/verses?books=true', {
+          credentials: 'include',
+        })
+        
+        if (!response.ok) {
+          // Fallback: load unique books from all verses
+          const versesResponse = await fetch('/api/verses', {
+            credentials: 'include',
+          })
+          const allVerses = await versesResponse.json()
+          const uniqueBooks = [...new Set(allVerses.map((v: Verse) => v.book))].sort()
+          setBooks(uniqueBooks as string[])
+        } else {
+          const data = await response.json()
+          setBooks(data || [])
+        }
       } catch {
         setError('Failed to load books')
       }
@@ -35,24 +49,25 @@ export default function VersesPage() {
   }, [])
 
   useEffect(() => {
-    if (!selectedBook) return
+    if (!selectedBook) {
+      setChapters([])
+      return
+    }
 
     async function loadChapters() {
       try {
-        const data = await graphqlRequest<{ versesByBook: Verse[] }>(
-          `
-          query VersesByBook($book: String!) {
-            versesByBook(book: $book) {
-              ...VerseFields
-            }
-          }
-          ${VERSE_FRAGMENT}
-        `,
-          { book: selectedBook }
+        const response = await fetch(
+          `/api/verses?book=${encodeURIComponent(selectedBook)}`,
+          { credentials: 'include' }
         )
-
+        
+        if (!response.ok) {
+          throw new Error('Failed to load chapters')
+        }
+        
+        const data = await response.json()
         const chapterSet = new Set<number>()
-        data.versesByBook.forEach((v: Verse) => chapterSet.add(v.chapter))
+        data.forEach((v: Verse) => chapterSet.add(v.chapter))
         setChapters(Array.from(chapterSet).sort((a, b) => a - b))
       } catch {
         setError('Failed to load chapters')
@@ -63,23 +78,25 @@ export default function VersesPage() {
   }, [selectedBook])
 
   useEffect(() => {
-    if (!selectedBook || selectedChapter === null) return
+    if (!selectedBook || selectedChapter === null) {
+      setVerses([])
+      return
+    }
 
     async function loadVerses() {
       setLoading(true)
       try {
-        const data = await graphqlRequest<{ versesByBook: Verse[] }>(
-          `
-          query VersesByBook($book: String!, $chapter: Int) {
-            versesByBook(book: $book, chapter: $chapter) {
-              ...VerseFields
-            }
-          }
-          ${VERSE_FRAGMENT}
-        `,
-          { book: selectedBook, chapter: selectedChapter }
+        const response = await fetch(
+          `/api/verses?book=${encodeURIComponent(selectedBook)}&chapter=${selectedChapter}`,
+          { credentials: 'include' }
         )
-        setVerses(data.versesByBook || [])
+        
+        if (!response.ok) {
+          throw new Error('Failed to load verses')
+        }
+        
+        const data = await response.json()
+        setVerses(data || [])
       } catch {
         setError('Failed to load verses')
       } finally {
@@ -98,18 +115,24 @@ export default function VersesPage() {
 
     setLoading(true)
     try {
-      const data = await graphqlRequest<{ searchVerses: Verse[] }>(
-        `
-        query SearchVerses($query: String!, $limit: Int) {
-          searchVerses(query: $query, limit: $limit) {
-            ...VerseFields
-          }
-        }
-        ${VERSE_FRAGMENT}
-      `,
-        { query: searchQuery, limit: 10 }
-      )
-      setSearchResults(data.searchVerses || [])
+      const response = await fetch('/api/verses/search', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify({ 
+          query: searchQuery, 
+          limit: 10 
+        }),
+      })
+      
+      if (!response.ok) {
+        throw new Error('Search failed')
+      }
+      
+      const data = await response.json()
+      setSearchResults(data || [])
     } catch {
       setError('Search failed')
     } finally {
@@ -136,6 +159,7 @@ export default function VersesPage() {
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && searchVerses()}
             placeholder="Search by keyword or topic..."
             className="flex-1 border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
           />
@@ -150,6 +174,9 @@ export default function VersesPage() {
 
         {searchResults.length > 0 && (
           <div className="mt-4 space-y-2">
+            <h3 className="text-sm font-medium text-gray-700">
+              Search Results ({searchResults.length})
+            </h3>
             {searchResults.map((verse) => (
               <div key={verse.id} className="bg-white p-4 rounded shadow">
                 <p className="font-semibold text-gray-900">

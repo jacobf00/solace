@@ -3,8 +3,6 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/components/providers/auth-provider'
-import { graphqlRequest } from '@/lib/graphql/client'
-import { createClient } from '@/lib/supabase/client'
 
 const categories = [
   'Relationships',
@@ -25,7 +23,6 @@ export default function NewProblemPage() {
   const [loading, setLoading] = useState(false)
   const router = useRouter()
   const { user } = useAuth()
-  const supabase = createClient()
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -39,40 +36,34 @@ export default function NewProblemPage() {
     }
 
     try {
-      // Get the current session to retrieve the access token
-      const { data: sessionData } = await supabase.auth.getSession()
-      const token = sessionData.session?.access_token
-
-      if (!token) {
-        setError('Authentication error. Please log in again.')
-        setLoading(false)
-        return
-      }
-
-      const data = await graphqlRequest<{
-        createProblem: { id: string }
-      }>(
-        `
-        mutation CreateProblem($title: String!, $description: String!, $context: String, $category: String) {
-          createProblem(title: $title, description: $description, context: $context, category: $category) {
-            id
-          }
-        }
-      `,
-        {
+      const response = await fetch('/api/problems', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify({
           title,
           description,
           context: context || null,
           category: category || null,
-        },
-        token
-      )
+        }),
+      })
 
-      if (data.createProblem?.id) {
-        router.push(`/problems/${data.createProblem.id}`)
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Failed to create problem')
+      }
+
+      const data = await response.json()
+      
+      if (data.id) {
+        router.push(`/problems/${data.id}`)
+      } else {
+        router.push('/problems')
       }
     } catch (err) {
-      setError('Failed to create problem. Please try again.')
+      setError(err instanceof Error ? err.message : 'Failed to create problem. Please try again.')
     } finally {
       setLoading(false)
     }

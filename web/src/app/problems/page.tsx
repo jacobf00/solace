@@ -3,8 +3,38 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useAuth } from '@/components/providers/auth-provider'
-import { graphqlRequest, READING_PLAN_FRAGMENT } from '@/lib/graphql/client'
-import { Problem } from '@/types'
+
+interface Verse {
+  id: string
+  book: string
+  chapter: number
+  verse: number
+  text: string
+}
+
+interface ReadingPlanItem {
+  id: string
+  item_order: number
+  is_read: boolean
+  verses: Verse
+}
+
+interface ReadingPlan {
+  id: string
+  created_at: string
+  reading_plan_items: ReadingPlanItem[]
+}
+
+interface Problem {
+  id: string
+  title: string
+  description: string
+  context: string | null
+  category: string | null
+  created_at: string
+  advice: string | null
+  reading_plans: ReadingPlan[]
+}
 
 export default function ProblemsPage() {
   const [problems, setProblems] = useState<Problem[]>([])
@@ -20,31 +50,19 @@ export default function ProblemsPage() {
 
     async function loadProblems() {
       try {
-        const data = await graphqlRequest<{ myProblems: Problem[] }>(
-          `
-          query MyProblems {
-            myProblems {
-              id
-              title
-              description
-              context
-              category
-              createdAt
-              advice
-              readingPlan {
-                ...ReadingPlanFields
-              }
-            }
-          }
-          ${READING_PLAN_FRAGMENT}
-        `,
-          undefined,
-          // Get token from Supabase session
-          undefined // We'll need to get this from the auth context
-        )
-        setProblems(data.myProblems || [])
+        const response = await fetch('/api/problems', {
+          credentials: 'include',
+        })
+        
+        if (!response.ok) {
+          throw new Error('Failed to load problems')
+        }
+        
+        const data = await response.json()
+        setProblems(data || [])
       } catch (err) {
         setError('Failed to load problems')
+        console.error(err)
       } finally {
         setLoading(false)
       }
@@ -106,7 +124,7 @@ export default function ProblemsPage() {
                     </p>
                   )}
                   <p className="text-gray-400 text-sm mt-2">
-                    {new Date(problem.createdAt).toLocaleDateString()}
+                    {new Date(problem.created_at).toLocaleDateString()}
                   </p>
                 </div>
                 <Link
@@ -117,32 +135,32 @@ export default function ProblemsPage() {
                 </Link>
               </div>
 
-              {problem.readingPlan && (
+              {problem.reading_plans && problem.reading_plans.length > 0 && (
                 <div className="mt-4 border-t pt-4">
                   <h3 className="text-sm font-medium text-gray-900 mb-2">
                     Reading Plan
                   </h3>
                   <div className="space-y-2">
-                    {problem.readingPlan.items.map((item) => (
+                    {problem.reading_plans[0].reading_plan_items?.map((item) => (
                       <div
                         key={item.id}
                         className="flex items-start space-x-2 text-sm"
                       >
                         <input
                           type="checkbox"
-                          checked={item.isRead}
+                          checked={item.is_read}
                           disabled
                           className="mt-1 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
                         />
                         <span
                           className={
-                            item.isRead
+                            item.is_read
                               ? 'line-through text-gray-400'
                               : 'text-gray-700'
                           }
                         >
-                          {item.verse.book} {item.verse.chapter}:
-                          {item.verse.verse}
+                          {item.verses.book} {item.verses.chapter}:
+                          {item.verses.verse}
                         </span>
                       </div>
                     ))}

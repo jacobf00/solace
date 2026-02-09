@@ -1,0 +1,14 @@
+[install]
+# Use exact versions from lockfile
+exact = true
+
+# Cache packages locally
+cache = true
+
+[run]
+# Enable hot reloading for bun dev
+hot = true
+
+[test]
+# Test configuration
+coverage = true

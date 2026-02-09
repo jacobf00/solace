@@ -1,20 +1,13 @@
--- Migration: add_triggers_and_functions
--- Description: Add database triggers and functions for automatic timestamp updates and utility functions
-
--- Create function to update the updated_at timestamp
+-- Auto-update timestamps
 CREATE OR REPLACE FUNCTION public.update_updated_at_column()
 RETURNS TRIGGER AS $$
 BEGIN
     NEW.updated_at = NOW();
     RETURN NEW;
 END;
-$$ language 'plpgsql';
+$$ LANGUAGE plpgsql;
 
--- Add triggers for automatic updated_at timestamp updates
-CREATE TRIGGER update_users_updated_at 
-    BEFORE UPDATE ON public.users 
-    FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
-
+-- Attach triggers
 CREATE TRIGGER update_problems_updated_at 
     BEFORE UPDATE ON public.problems 
     FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
@@ -31,7 +24,7 @@ CREATE TRIGGER update_advice_feedback_updated_at
     BEFORE UPDATE ON public.advice_feedback 
     FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
 
--- Create function to get user statistics
+-- Get user stats
 CREATE OR REPLACE FUNCTION public.get_user_stats(user_uuid UUID)
 RETURNS TABLE(
     total_problems BIGINT,
@@ -42,23 +35,23 @@ RETURNS TABLE(
 BEGIN
     RETURN QUERY
     SELECT 
-        (SELECT COUNT(*) FROM public.problems WHERE user_id = user_uuid) as total_problems,
+        (SELECT COUNT(*) FROM public.problems WHERE user_id = user_uuid),
         (SELECT COUNT(*) FROM public.reading_plans rp 
          JOIN public.problems p ON rp.problem_id = p.id 
-         WHERE p.user_id = user_uuid) as total_reading_plans,
+         WHERE p.user_id = user_uuid),
         (SELECT COUNT(*) FROM public.reading_plan_items rpi
          JOIN public.reading_plans rp ON rpi.reading_plan_id = rp.id
          JOIN public.problems p ON rp.problem_id = p.id
-         WHERE p.user_id = user_uuid AND rpi.is_read = true) as verses_read,
+         WHERE p.user_id = user_uuid AND rpi.is_read = true),
         (SELECT AVG(rating) FROM public.advice_feedback af
          JOIN public.problems p ON af.problem_id = p.id
-         WHERE p.user_id = user_uuid AND af.rating IS NOT NULL) as avg_advice_rating;
+         WHERE p.user_id = user_uuid AND af.rating IS NOT NULL);
 END;
-$$ language 'plpgsql';
+$$ LANGUAGE plpgsql SECURITY DEFINER;
 
--- Create function to search verses by similarity (for AI integration)
+-- Vector similarity search
 CREATE OR REPLACE FUNCTION public.search_similar_verses(
-    query_embedding vector(384),
+    query_embedding vector(1536),
     similarity_threshold FLOAT DEFAULT 0.7,
     max_results INTEGER DEFAULT 10
 )
@@ -66,7 +59,7 @@ RETURNS TABLE(
     verse_id UUID,
     book VARCHAR,
     chapter INTEGER,
-    verse INTEGER,
+    verse_num INTEGER,
     text TEXT,
     similarity FLOAT
 ) AS $$
@@ -76,7 +69,7 @@ BEGIN
         v.id,
         v.book,
         v.chapter,
-        v.verse,
+        v."verse",
         v.text,
         1 - (v.embedding <=> query_embedding) as similarity
     FROM public.verses v
@@ -85,10 +78,20 @@ BEGIN
     ORDER BY v.embedding <=> query_embedding
     LIMIT max_results;
 END;
-$$ language 'plpgsql';
+$$ LANGUAGE plpgsql;
 
--- Add comments for documentation
-COMMENT ON FUNCTION public.update_updated_at_column() IS 'Trigger function to automatically update updated_at timestamps';
-COMMENT ON FUNCTION public.get_user_stats(UUID) IS 'Function to retrieve user statistics including problems, reading plans, and ratings';
-COMMENT ON FUNCTION public.search_similar_verses(vector, FLOAT, INTEGER) IS 'Function to perform vector similarity search on Bible verses for AI recommendations';
+-- Get all unique Bible books
+CREATE OR REPLACE FUNCTION public.get_all_books()
+RETURNS TABLE(book VARCHAR) AS $$
+BEGIN
+    RETURN QUERY
+    SELECT DISTINCT v.book 
+    FROM public.verses v
+    ORDER BY v.book;
+END;
+$$ LANGUAGE plpgsql;
 
+-- Comments
+COMMENT ON FUNCTION public.update_updated_at_column() IS 'Auto-update updated_at timestamps';
+COMMENT ON FUNCTION public.get_user_stats(UUID) IS 'Get user statistics';
+COMMENT ON FUNCTION public.search_similar_verses(vector, FLOAT, INTEGER) IS 'Vector similarity search on verses';
